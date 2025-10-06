@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TXT to HTML Quiz Generator Bot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 TXT to HTML Quiz Generator</h1>
+            <p>अपने प्रश्नों को TXT फॉर्मेट में डालें और पूरा HTML टेस्ट प्राप्त करें</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Input Section -->
+            <div class="input-section">
+                <h2>📥 प्रश्न डालें (TXT Format)</h2>
+                <div class="format-guide">
+                    <h3>फॉर्मेट गाइड:</h3>
+                    <pre>
+1
+यह पहला प्रश्न है?
+विकल्प A
+विकल्प B
+विकल्प C
+विकल्प D
+1
+यह सही उत्तर है
+---
+2
+दूसरा प्रश्न?
+विकल्प 1
+विकल्प 2
+विकल्प 3
+विकल्प 4
+2
+यह दूसरे का समाधान है
+---
+                    </pre>
+                </div>
+                
+                <textarea id="txtInput" placeholder="अपने प्रश्न यहाँ पेस्ट करें..."></textarea>
+                
+                <div class="config-options">
+                    <div class="config-item">
+                        <label for="testName">टेस्ट का नाम:</label>
+                        <input type="text" id="testName" value="मेरा क्विज टेस्ट">
+                    </div>
+                    <div class="config-item">
+                        <label for="testDuration">समय (मिनट):</label>
+                        <input type="number" id="testDuration" value="60" min="1">
+                    </div>
+                    <div class="config-item">
+                        <label for="testCategory">श्रेणी:</label>
+                        <input type="text" id="testCategory" value="सामान्य ज्ञान">
+                    </div>
+                </div>
+
+                <button onclick="generateQuiz()" class="generate-btn">🚀 HTML टेस्ट जनरेट करें</button>
+                
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>टेस्ट जनरेट हो रहा है...</p>
+                </div>
+            </div>
+
+            <!-- Output Section -->
+            <div class="output-section">
+                <h2>📤 जनरेटेड HTML टेस्ट</h2>
+                <div class="output-controls">
+                    <button onclick="copyToClipboard()" class="copy-btn">📋 कोड कॉपी करें</button>
+                    <button onclick="downloadHTML()" class="download-btn">💾 HTML डाउनलोड करें</button>
+                    <button onclick="previewQuiz()" class="preview-btn">👁️ प्रीव्यू देखें</button>
+                </div>
+                <textarea id="htmlOutput" readonly placeholder="जनरेटेड HTML कोड यहाँ दिखेगा..."></textarea>
+                
+                <div id="result-info" class="result-info" style="display: none;">
+                    <p>✅ <span id="questions-count">0</span> प्रश्नों का टेस्ट सफलतापूर्वक जनरेट हुआ!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Modal -->
+        <div id="previewModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closePreview()">&times;</span>
+                <h2>टेस्ट प्रीव्यू</h2>
+                <div id="quizPreview"></div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <h3>📖 उपयोग के निर्देश:</h3>
+            <ol>
+                <li>TXT फॉर्मेट में प्रश्न डालें (ऊपर दिए गए फॉर्मेट के अनुसार)</li>
+                <li>टेस्ट का नाम, समय और श्रेणी सेट करें</li>
+                <li>"HTML टेस्ट जनरेट करें" बटन क्लिक करें</li>
+                <li>जनरेटेड HTML को कॉपी करें या डाउनलोड करें</li>
+                <li>प्रीव्यू देखकर टेस्ट चेक करें</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        async function generateQuiz() {
+            const txtInput = document.getElementById('txtInput').value;
+            const testName = document.getElementById('testName').value;
+            const testDuration = document.getElementById('testDuration').value;
+            const testCategory = document.getElementById('testCategory').value;
+
+            if (!txtInput.trim()) {
+                showMessage('कृपया प्रश्न डालें!', 'error');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result-info').style.display = 'none';
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        txtContent: txtInput,
+                        testName: testName,
+                        duration: testDuration,
+                        category: testCategory
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('htmlOutput').value = result.html;
+                    document.getElementById('questions-count').textContent = result.questionsCount;
+                    document.getElementById('result-info').style.display = 'block';
+                    showMessage(`✅ ${result.questionsCount} प्रश्नों का टेस्ट जनरेट हुआ!`, 'success');
+                } else {
+                    showMessage(`❌ त्रुटि: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ सर्वर कनेक्शन में त्रुटि!', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function copyToClipboard() {
+            const htmlOutput = document.getElementById('htmlOutput');
+            if (!htmlOutput.value.trim()) {
+                showMessage('पहले HTML जनरेट करें!', 'error');
+                return;
+            }
+
+            htmlOutput.select();
+            htmlOutput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(htmlOutput.value);
+            
+            showMessage('✅ HTML कोड क्लिपबोर्ड में कॉपी हो गया!', 'success');
+        }
+
+        function downloadHTML() {
+            const htmlOutput = document.getElementById('htmlOutput');
+            if (!htmlOutput.value.trim()) {
+                showMessage('पहले HTML जनरेट करें!', 'error');
+                return;
+            }
+
+            const testName = document.getElementById('testName').value.replace(/\s+/g, '_');
+            const blob = new Blob([htmlOutput.value], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${testName}_quiz.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('✅ HTML फाइल डाउनलोड हो गई!', 'success');
+        }
+
+        function previewQuiz() {
+            const htmlOutput = document.getElementById('htmlOutput');
+            if (!htmlOutput.value.trim()) {
+                showMessage('पहले HTML जनरेट करें!', 'error');
+                return;
+            }
+
+            const preview = document.getElementById('quizPreview');
+            preview.innerHTML = htmlOutput.value;
+            document.getElementById('previewModal').style.display = 'block';
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').style.display = 'none';
+        }
+
+        function showMessage(message, type) {
+            // Remove existing messages
+            const existingMessages = document.querySelectorAll('.message');
+            existingMessages.forEach(msg => msg.remove());
+
+            // Create new message
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.textContent = message;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+
+            if (type === 'success') {
+                messageDiv.style.background = '#28a745';
+            } else {
+                messageDiv.style.background = '#dc3545';
+            }
+
+            document.body.appendChild(messageDiv);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('previewModal');
+            if (event.target === modal) {
+                closePreview();
+            }
+        }
+
+        // Add sample data on load
+        window.onload = function() {
+            document.getElementById('txtInput').value = `1
+फलवृक्षों के लगाने की षट्भुजाकार विधि में वर्गाकार विधि की अपेक्षा कितने प्रतिशत अधिक पौधे लगाए जा सकते हैं?
+5 प्रतिशत
+10 प्रतिशत
+15 प्रतिशत
+20 प्रतिशत
+3
+षट्भुजाकार विधि में वर्गाकार विधि की अपेक्षा 15% अधिक पौधे लगाए जा सकते हैं।
+---
+2
+राजस्थान में सोनामुखी (सनाय) की खेती का प्रमुख क्षेत्र है-
+जोधपुर
+उदयपुर
+बाँसवाड़ा
+टोंक
+1
+राजस्थान में सोनामुखी की खेती का प्रमुख क्षेत्र जोधपुर है।
+---`;
+        }
+    </script>
+
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result-info {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</body>
+</html>
